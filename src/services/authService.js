@@ -32,42 +32,29 @@ export const authService = {
         }
     },
 
-    logout: (isWindowClosing = false) => {
+    logout: async () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) return true;
+
         try {
-            const token = localStorage.getItem(TOKEN_KEY);
-            if (!token) return true;
+            const response = await fetch(`${API_URL}/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
-            const logoutEndpoint = `${API_URL}/auth/logout`;
-
-            if (isWindowClosing) {
-                // Synchronous logout for window closing
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', logoutEndpoint, false); // false makes it synchronous
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send();
-            } else {
-                // Asynchronous logout for normal logout
-                fetch(logoutEndpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+            if (!response.ok) {
+                console.error('Token revocation failed:', response.status);
             }
-
-            // Always clear local storage
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-            return true;
         } catch (error) {
-            console.error('Logout error:', error);
-            // Still remove items from localStorage even if the API call fails
+            console.error('Logout request failed:', error);
+        } finally {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
-            return true;
         }
+        return true;
     },
 
     hasRole: (user, role) => {
